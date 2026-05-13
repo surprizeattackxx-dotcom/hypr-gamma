@@ -1,0 +1,12 @@
+[repository]
+name = "hyprgamma"
+authors = ["donnie"]
+
+[hyprgamma]
+description = "Per-monitor brightness, contrast, and gamma control"
+authors = ["donnie"]
+output = "build/libhyprgamma.so"
+build = [
+  "cmake -DCMAKE_BUILD_TYPE=Release -B build",
+  "cmake --build build -j $(nproc)"
+]

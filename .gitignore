@@ -1,0 +1,5 @@
+build/
+build-gui/
+gui/build-gui/
+*.so
+*.o
