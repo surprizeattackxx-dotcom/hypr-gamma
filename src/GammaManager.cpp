@@ -137,14 +137,14 @@ void GammaManager::setParam(const std::string& monitor, const std::string& key, 
     auto& s = it->second;
     if (key == "brightness")        s.brightness = value;
     else if (key == "contrast")     s.contrast   = value;
-    else if (key == "gamma_r" || key == "gamma")  s.gammaR = value;
-    else if (key == "gamma_g")      s.gammaG     = value;
-    else if (key == "gamma_b")      s.gammaB     = value;
-    else if (key == "gamma") {
+    else if (key == "gamma") {      // "gamma" adjusts all three channels at once
         s.gammaR = value;
         s.gammaG = value;
         s.gammaB = value;
     }
+    else if (key == "gamma_r")      s.gammaR     = value;
+    else if (key == "gamma_g")      s.gammaG     = value;
+    else if (key == "gamma_b")      s.gammaB     = value;
 
     applyToMonitor(monitor, s);
 }
