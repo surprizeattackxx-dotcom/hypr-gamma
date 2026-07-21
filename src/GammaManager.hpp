@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hyprland/src/helpers/Monitor.hpp>
+#include <hyprland/src/output/Monitor.hpp>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>

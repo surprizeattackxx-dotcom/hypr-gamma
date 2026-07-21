@@ -3,6 +3,7 @@
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
 #include <hyprutils/signal/Signal.hpp>
 
 #include <cmath>
@@ -27,7 +28,7 @@ std::string GammaManager::getConfigPath() const {
 }
 
 PHLMONITOR GammaManager::findMonitor(const std::string& name) const {
-    for (auto& m : g_pCompositor->m_monitors) {
+    for (auto& m : State::monitorState()->monitors()) {
         if (m && m->m_name == name)
             return m;
     }
@@ -96,7 +97,7 @@ void GammaManager::applyToMonitor(const std::string& name) {
 }
 
 void GammaManager::applyAll() {
-    for (auto& m : g_pCompositor->m_monitors) {
+    for (auto& m : State::monitorState()->monitors()) {
         if (!m || !m->m_output)
             continue;
 
@@ -112,7 +113,7 @@ void GammaManager::applyAll() {
 }
 
 void GammaManager::applyToAllEnabled() {
-    for (auto& m : g_pCompositor->m_monitors) {
+    for (auto& m : State::monitorState()->monitors()) {
         if (!m || !m->m_output)
             continue;
         auto it = m_monitorSettings.find(m->m_name);
@@ -122,7 +123,7 @@ void GammaManager::applyToAllEnabled() {
 }
 
 void GammaManager::clearAll() {
-    for (auto& m : g_pCompositor->m_monitors) {
+    for (auto& m : State::monitorState()->monitors()) {
         if (!m || !m->m_output)
             continue;
         m->m_output->state->setGammaLut({});
@@ -277,7 +278,7 @@ std::string GammaManager::getSettingsJson() const {
 
 std::string GammaManager::getMonitorListText() const {
     std::string out;
-    for (auto& m : g_pCompositor->m_monitors) {
+    for (auto& m : State::monitorState()->monitors()) {
         if (!m)
             continue;
         auto it = m_monitorSettings.find(m->m_name);
