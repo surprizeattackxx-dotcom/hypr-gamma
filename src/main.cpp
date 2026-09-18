@@ -1,6 +1,7 @@
 #define WLR_USE_UNSTABLE
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/ipc/s1/S1.hpp>
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprland/src/render/Renderer.hpp>
@@ -10,6 +11,7 @@
 
 #include "GammaManager.hpp"
 
+#include <functional>
 #include <string>
 #include <memory>
 #include <sstream>
@@ -22,11 +24,11 @@ inline Hyprutils::Signal::CHyprSignalListener g_monitorAdded;
 inline Hyprutils::Signal::CHyprSignalListener g_monitorRemoved;
 
 // ── hyprctl command: list ──────────────────────────────────────────────────
-static std::string cmdList(eHyprCtlOutputFormat format, std::string) {
+static std::string cmdList(IPC::Socket1::eOutputFormat format, std::string) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
 
-    if (format == FORMAT_JSON)
+    if (format == IPC::Socket1::FORMAT_JSON)
         return g_gammaManager->getSettingsJson();
     else
         return g_gammaManager->getMonitorListText();
@@ -34,13 +36,13 @@ static std::string cmdList(eHyprCtlOutputFormat format, std::string) {
 
 // ── hyprctl command: set ───────────────────────────────────────────────────
 // hyprgamma:set <monitor> <key> <value>
-static std::string cmdSet(eHyprCtlOutputFormat, std::string args) {
+static std::string cmdSet(IPC::Socket1::eOutputFormat, std::string args) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
 
     // hyprctl passes the full command line including our prefix, e.g.
     // "hyprgamma:set DP-1 brightness 0.8"
-    // In 0.55.0, args is the full request. Strip the "hyprgamma:set " prefix.
+    // Strip the "hyprgamma:set " prefix from the full request command.
     auto prefix = std::string("hyprgamma:set");
     if (args.starts_with(prefix))
         args = (args.size() > prefix.size() && args[prefix.size()] == ' ') ? args.substr(prefix.size() + 1) : "";
@@ -68,7 +70,7 @@ static std::string cmdSet(eHyprCtlOutputFormat, std::string args) {
 
 // ── hyprctl command: reset ─────────────────────────────────────────────────
 // hyprgamma:reset [monitor]
-static std::string cmdReset(eHyprCtlOutputFormat, std::string args) {
+static std::string cmdReset(IPC::Socket1::eOutputFormat, std::string args) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
 
@@ -91,7 +93,7 @@ static std::string cmdReset(eHyprCtlOutputFormat, std::string args) {
 }
 
 // ── hyprctl command: enable / disable ──────────────────────────────────────
-static std::string cmdEnable(eHyprCtlOutputFormat, std::string args) {
+static std::string cmdEnable(IPC::Socket1::eOutputFormat, std::string args) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
 
@@ -110,7 +112,7 @@ static std::string cmdEnable(eHyprCtlOutputFormat, std::string args) {
     return "ok";
 }
 
-static std::string cmdDisable(eHyprCtlOutputFormat, std::string args) {
+static std::string cmdDisable(IPC::Socket1::eOutputFormat, std::string args) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
 
@@ -130,13 +132,13 @@ static std::string cmdDisable(eHyprCtlOutputFormat, std::string args) {
 }
 
 // ── hyprctl command: save / reload ─────────────────────────────────────────
-static std::string cmdSave(eHyprCtlOutputFormat, std::string) {
+static std::string cmdSave(IPC::Socket1::eOutputFormat, std::string) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
     return g_gammaManager->saveConfig() ? "ok" : "error: failed to save";
 }
 
-static std::string cmdReload(eHyprCtlOutputFormat, std::string) {
+static std::string cmdReload(IPC::Socket1::eOutputFormat, std::string) {
     if (!g_gammaManager)
         return "error: gamma manager not initialized";
     g_gammaManager->loadConfig();
@@ -188,11 +190,13 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     g_gammaManager->applyAll();
 
     // Register hyprctl commands
-    auto registerCmd = [&](const char* name, std::function<std::string(eHyprCtlOutputFormat, std::string)> fn) {
-        auto cmd = HyprlandAPI::registerHyprCtlCommand(g_pluginHandle, SHyprCtlCommand{
+    auto registerCmd = [&](const char* name, std::function<std::string(IPC::Socket1::eOutputFormat, std::string)> fn) {
+        auto cmd = HyprlandAPI::registerHyprCtlCommand(g_pluginHandle, IPC::Socket1::SCommand{
             .name = name,
-            .exact = false,
-            .fn = fn,
+            .match = IPC::Socket1::COMMAND_MATCH_PREFIX,
+            .handler = [fn](const IPC::Socket1::SRequest& request) -> IPC::Socket1::SResponse {
+                return fn(request.format, request.command);
+            },
         });
         if (!cmd) {
             HyprlandAPI::addNotification(g_pluginHandle,
